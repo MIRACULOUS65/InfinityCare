@@ -1,0 +1,189 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+}
+
+enum Role {
+  PATIENT
+  DOCTOR
+  HOSPITAL
+  PHARMACY
+  VENDOR
+}
+
+enum DocumentType {
+  LAB_REPORT
+  PRESCRIPTION
+  INSURANCE
+  DISCHARGE_SUMMARY
+  OTHER
+}
+
+enum VerificationStatus {
+  GENUINE
+  NOT_FOUND
+  EXPIRED
+  TAMPERED
+  SUSPICIOUS
+}
+
+// Better Auth required tables
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  role          Role
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions      Session[]
+  accounts      Account[]
+
+  // Role-specific relations
+  documents     Document[]     @relation("PatientDocuments")
+  notifications Notification[] @relation("PatientNotifications")
+  accessLogs    AccessLog[]    @relation("HospitalAccessLogs")
+  prescriptions Prescription[] @relation("DoctorPrescriptions")
+  medicines     Medicine[]     @relation("VendorMedicines")
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("accounts")
+}
+
+model Verification {
+  id         String    @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@map("verifications")
+}
+
+// --- Core Healix Models ---
+
+model Document {
+  id              String       @id @default(cuid())
+  patientId       String
+  patient         User         @relation("PatientDocuments", fields: [patientId], references: [id], onDelete: Cascade)
+  documentType    DocumentType
+  fileUrl         String
+  fileName        String
+  accessHospital  Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  accessLogs      AccessLog[]
+  aiSummaries     AISummary[]
+
+  @@map("documents")
+}
+
+model AISummary {
+  id         String   @id @default(cuid())
+  patientId  String
+  documentId String?
+  document   Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  summaryText String
+  createdAt  DateTime  @default(now())
+
+  @@map("ai_summaries")
+}
+
+model Prescription {
+  id           String   @id @default(cuid())
+  patientId    String
+  doctorId     String
+  doctor       User     @relation("DoctorPrescriptions", fields: [doctorId], references: [id])
+  medicinesJson Json
+  instructions String?
+  qrData       String?
+  imageUrl     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("prescriptions")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  patientId String
+  patient   User     @relation("PatientNotifications", fields: [patientId], references: [id], onDelete: Cascade)
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
+}
+
+model AccessLog {
+  id         String   @id @default(cuid())
+  patientId  String
+  hospitalId String
+  hospital   User     @relation("HospitalAccessLogs", fields: [hospitalId], references: [id])
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  accessedAt DateTime @default(now())
+
+  @@map("access_logs")
+}
+
+model Medicine {
+  id            String             @id @default(cuid())
+  vendorId      String
+  vendor        User               @relation("VendorMedicines", fields: [vendorId], references: [id])
+  name          String
+  batchNumber   String
+  manufacturer  String
+  expiryDate    DateTime
+  quantity      Int
+  metadata      Json?
+  hash          String             @unique
+  qrData        String?
+  status        VerificationStatus @default(GENUINE)
+  registeredAt  DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@map("medicines")
+}
