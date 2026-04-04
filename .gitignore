@@ -1,0 +1,23 @@
+# Python Virtual Environments
+**/venv/
+**/.venv/
+**/env/
+
+# Python Cache
+**/__pycache__/
+**/db_cache/
+*.py[cod]
+*$py.class
+
+# Next.js / Node
+node_modules/
+.next/
+out/
+build/
+dist/
+.env*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
