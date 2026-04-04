@@ -8,7 +8,8 @@ import { MyDocumentsModal } from "@/components/patient/MyDocumentsModal";
 import { VerifyMedicineModal } from "@/components/patient/VerifyMedicineModal";
 import { NotificationsModal, DashboardNotification } from "@/components/patient/NotificationsModal";
 import { ViewPrescriptionsModal } from "@/components/patient/ViewPrescriptionsModal";
-import { Upload, FileText, QrCode, Pill, Bell } from "lucide-react";
+import { PrescriptionAnalysisModal } from "@/components/patient/PrescriptionAnalysisModal";
+import { Upload, FileText, QrCode, Pill, Bell, Sparkles } from "lucide-react";
 import { AsmeDashboardLayout } from "@/components/layout/AsmeDashboardLayout";
 
 interface UploadedDocument {
@@ -40,6 +41,7 @@ export default function PatientDashboard() {
   const [verifyModalOpen, setVerifyModalOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [prescriptionsOpen, setPrescriptionsOpen] = useState(false);
+  const [aiAnalysisOpen, setAiAnalysisOpen] = useState(false);
   
   const [documents, setDocuments] = useState<UploadedDocument[]>([]);
   const [notifications, setNotifications] = useState<DashboardNotification[]>([]);
@@ -171,6 +173,13 @@ export default function PatientDashboard() {
             title: "View Prescriptions",
             description: "Verify digital prescriptions authorized by registered doctors in the network.",
             onClick: () => setPrescriptionsOpen(true)
+          },
+          {
+            videoSrc: "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260307_083826_e938b29f-a43a-41ec-a153-3d4730578ab8.mp4",
+            tagText: "COMING SOON",
+            title: "AI Summaries",
+            description: "Automatically retrieve complex medical history structured linearly via our specialized LLM models.",
+            onClick: () => setAiAnalysisOpen(true)
           }
         ]
       }}
@@ -201,6 +210,10 @@ export default function PatientDashboard() {
       <ViewPrescriptionsModal
         isOpen={prescriptionsOpen}
         onClose={() => setPrescriptionsOpen(false)}
+      />
+      <PrescriptionAnalysisModal
+        isOpen={aiAnalysisOpen}
+        onClose={() => setAiAnalysisOpen(false)}
       />
     </AsmeDashboardLayout>
   );
