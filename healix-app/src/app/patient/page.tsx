@@ -9,6 +9,7 @@ import { VerifyMedicineModal } from "@/components/patient/VerifyMedicineModal";
 import { NotificationsModal, DashboardNotification } from "@/components/patient/NotificationsModal";
 import { ViewPrescriptionsModal } from "@/components/patient/ViewPrescriptionsModal";
 import { PrescriptionAnalysisModal } from "@/components/patient/PrescriptionAnalysisModal";
+import { MySummariesModal } from "@/components/patient/MySummariesModal";
 import { Upload, FileText, QrCode, Pill, Bell, Sparkles } from "lucide-react";
 import { AsmeDashboardLayout } from "@/components/layout/AsmeDashboardLayout";
 
@@ -42,6 +43,7 @@ export default function PatientDashboard() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [prescriptionsOpen, setPrescriptionsOpen] = useState(false);
   const [aiAnalysisOpen, setAiAnalysisOpen] = useState(false);
+  const [mySummariesOpen, setMySummariesOpen] = useState(false);
   
   const [documents, setDocuments] = useState<UploadedDocument[]>([]);
   const [notifications, setNotifications] = useState<DashboardNotification[]>([]);
@@ -176,10 +178,17 @@ export default function PatientDashboard() {
           },
           {
             videoSrc: "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260307_083826_e938b29f-a43a-41ec-a153-3d4730578ab8.mp4",
-            tagText: "COMING SOON",
-            title: "AI Summaries",
-            description: "Automatically retrieve complex medical history structured linearly via our specialized LLM models.",
+            tagText: "AI SCAN",
+            title: "Scan Prescription",
+            description: "Upload a prescription image to extract structured clinical data using AI-powered OCR and NLP analysis.",
             onClick: () => setAiAnalysisOpen(true)
+          },
+          {
+            videoSrc: "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260324_151826_c7218672-6e92-402c-9e45-f1e0f454bdc4.mp4",
+            tagText: "MY RECORDS",
+            title: "My AI Summaries",
+            description: "View your saved clinical summaries and securely share them with your treating doctor.",
+            onClick: () => setMySummariesOpen(true)
           }
         ]
       }}
@@ -214,6 +223,10 @@ export default function PatientDashboard() {
       <PrescriptionAnalysisModal
         isOpen={aiAnalysisOpen}
         onClose={() => setAiAnalysisOpen(false)}
+      />
+      <MySummariesModal
+        isOpen={mySummariesOpen}
+        onClose={() => setMySummariesOpen(false)}
       />
     </AsmeDashboardLayout>
   );

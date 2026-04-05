@@ -54,6 +54,54 @@ function validateFile(file: File): string | null {
   return null;
 }
 
+const preprocessImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      if (!ctx) {
+        reject(new Error("Canvas not supported"));
+        return;
+      }
+
+      const scale = 2;
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+
+        let gray = 0.299 * r + 0.587 * g + 0.114 * b;
+
+        if (gray > 170) gray = 255;
+        else if (gray < 110) gray = 0;
+
+        data[i] = gray;
+        data[i + 1] = gray;
+        data[i + 2] = gray;
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/png"));
+    };
+
+    img.onerror = () => reject(new Error("Failed to load image"));
+    img.src = url;
+  });
+};
+
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
 function ProgressBar({ value, color = "white" }: { value: number; color?: string }) {
@@ -314,6 +362,9 @@ export function PrescriptionAnalysisModal({
   const [predictionLoading, setPredictionLoading] = useState(false);
   const [summaryResult, setSummaryResult] = useState<SummaryResult | null>(null);
   const [predictionResult, setPredictionResult] = useState<PredictionResult | null>(null);
+  
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [predictionError, setPredictionError] = useState<string | null>(null);
 
@@ -396,38 +447,63 @@ export function PrescriptionAnalysisModal({
 
   const runOcr = async () => {
     if (!selectedFile) return;
+
     setStep("ocr");
     setOcrLoading(true);
-    setOcrProgress({ status: "Loading Tesseract…", progress: 5 });
+    setOcrDone(false);
+    setOcrText("");
+    setOcrProgress({ status: "Preparing image…", progress: 5 });
+
+    let worker: any = null;
 
     try {
-      const { createWorker } = await import("tesseract.js");
-      const worker = await createWorker("eng", 1, {
-        logger: (m) => {
+      const processedImage = await preprocessImage(selectedFile);
+
+      setOcrProgress({ status: "Loading OCR engine…", progress: 15 });
+
+      const { createWorker, PSM } = await import("tesseract.js");
+
+      worker = await createWorker("eng", 1, {
+        logger: (m: any) => {
           if (m.status === "recognizing text") {
             setOcrProgress({
               status: "Recognising text…",
-              progress: Math.round(m.progress * 90) + 5,
+              progress: Math.min(95, Math.round(m.progress * 70) + 25),
             });
           } else if (m.status === "loading language traineddata") {
-            setOcrProgress({ status: "Loading language model…", progress: 15 });
+            setOcrProgress({ status: "Loading language model…", progress: 20 });
           } else if (m.status === "initializing api") {
             setOcrProgress({ status: "Initialising OCR engine…", progress: 25 });
           }
         },
       });
 
-      setOcrProgress({ status: "Scanning image…", progress: 40 });
-      const { data } = await worker.recognize(selectedFile);
-      await worker.terminate();
+      await worker.setParameters({
+        tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
+        preserve_interword_spaces: "1",
+      });
 
-      setOcrProgress({ status: "Done", progress: 100 });
-      setOcrText(data.text.trim());
+      setOcrProgress({ status: "Scanning image…", progress: 35 });
+
+      const { data } = await worker.recognize(processedImage);
+
+      const cleanedText = data.text
+        .replace(/[ \t]+/g, " ")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+
+      setOcrText(cleanedText);
       setOcrDone(true);
+      setOcrProgress({ status: "Done", progress: 100 });
     } catch (err) {
       console.error("[OCR]", err);
       setOcrText("");
+      setOcrDone(false);
+      setOcrProgress({ status: "OCR failed", progress: 0 });
     } finally {
+      if (worker) {
+        await worker.terminate();
+      }
       setOcrLoading(false);
     }
   };
@@ -446,25 +522,49 @@ export function PrescriptionAnalysisModal({
     setSummaryLoading(true);
     setPredictionLoading(true);
 
-    // Run both in parallel; handle each independently
-    const [summaryOutcome, predictionOutcome] = await Promise.allSettled([
-      fetchMedicalSummary(textToAnalyze),
-      fetchDiseasePrediction(textToAnalyze),
-    ]);
-
-    setSummaryLoading(false);
-    setPredictionLoading(false);
-
-    if (summaryOutcome.status === "fulfilled") {
-      setSummaryResult(summaryOutcome.value);
-    } else {
-      setSummaryError(summaryOutcome.reason?.message ?? "Summary failed");
+    // 1. First get the summary (which extracts structured symptoms)
+    let summaryData: SummaryResult | null = null;
+    try {
+      summaryData = await fetchMedicalSummary(textToAnalyze);
+      setSummaryResult(summaryData);
+      setIsSaved(false); // Reset saved status on fresh analysis
+    } catch (err) {
+      setSummaryError((err as Error).message ?? "Summary failed");
     }
+    setSummaryLoading(false);
 
-    if (predictionOutcome.status === "fulfilled") {
-      setPredictionResult(predictionOutcome.value);
-    } else {
-      setPredictionError(predictionOutcome.reason?.message ?? "Prediction failed");
+    // 2. Use extracted symptoms for prediction, fallback to raw text if none extracted
+    const extractedSymptoms = summaryData?.symptoms?.join(", ") || textToAnalyze;
+
+    try {
+      const predData = await fetchDiseasePrediction(extractedSymptoms);
+      setPredictionResult(predData);
+    } catch (err) {
+      setPredictionError((err as Error).message ?? "Prediction failed");
+    }
+    setPredictionLoading(false);
+  };
+
+  const handleSaveSummary = async () => {
+    if (!summaryResult || isSaved) return;
+    setIsSaving(true);
+    
+    try {
+      const res = await fetch("/api/patient/save-ai-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ summaryText: JSON.stringify(summaryResult) }),
+      });
+      
+      if (res.ok) {
+        setIsSaved(true);
+      } else {
+        console.error("Failed to save summary:", await res.text());
+      }
+    } catch (err) {
+      console.error("Network error when saving summary:", err);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -652,7 +752,7 @@ export function PrescriptionAnalysisModal({
                       : "Click \u2018Scan Prescription\u2019 to extract text from the image."
                   }
                   disabled={ocrLoading}
-                  rows={10}
+                  rows={12}
                   className="w-full bg-white/[0.03] border border-white/10 px-4 py-3 text-sm text-white/80 font-mono resize-none focus:outline-none focus:border-white/25 placeholder:text-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 {ocrDone && ocrText.length === 0 && (
@@ -795,18 +895,37 @@ export function PrescriptionAnalysisModal({
           )}
 
           {step === "results" && !anyLoading && (
-            <button
-              onClick={() => {
-                // Re-run analysis
-                setSummaryResult(null);
-                setPredictionResult(null);
-                runAnalysis();
-              }}
-              className="px-6 py-2.5 text-xs font-medium flex items-center gap-2 bg-white/10 text-white hover:bg-white/20 transition-all"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Re-analyze
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={handleSaveSummary}
+                disabled={isSaving || isSaved}
+                className={`px-6 py-2.5 text-xs font-medium flex items-center gap-2 transition-all ${
+                  isSaved
+                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 cursor-not-allowed"
+                    : "bg-indigo-500 text-white hover:bg-indigo-400 border border-transparent shadow-[0_0_15px_rgba(99,102,241,0.2)]"
+                }`}
+              >
+                {isSaving ? (
+                  <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving...</>
+                ) : isSaved ? (
+                  <><Sparkles className="w-3.5 h-3.5" /> Saved to DB</>
+                ) : (
+                  <><Activity className="w-3.5 h-3.5" /> Push to DB</>
+                )}
+              </button>
+              <button
+                onClick={() => {
+                  // Re-run analysis
+                  setSummaryResult(null);
+                  setPredictionResult(null);
+                  runAnalysis();
+                }}
+                className="px-6 py-2.5 text-xs font-medium flex items-center gap-2 bg-white/10 text-white hover:bg-white/20 transition-all"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Re-analyze
+              </button>
+            </div>
           )}
 
           {/* Cancel / Close */}

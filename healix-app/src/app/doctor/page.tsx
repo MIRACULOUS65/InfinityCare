@@ -9,6 +9,7 @@ import { FileText, History, Pill, QrCode } from "lucide-react";
 import { PrescriptionModal } from "@/components/hospital/PrescriptionModal";
 import { PreviousPrescriptionsModal } from "@/components/doctor/PreviousPrescriptionsModal";
 import { PrescriptionQRModal } from "@/components/doctor/PrescriptionQRModal";
+import { PatientAISummariesModal } from "@/components/doctor/PatientAISummariesModal";
 
 export default function DoctorDashboard() {
   const router = useRouter();
@@ -16,6 +17,7 @@ export default function DoctorDashboard() {
   const [isPrescribeOpen, setIsPrescribeOpen] = useState(false);
   const [isPreviousOpen, setIsPreviousOpen] = useState(false);
   const [isQrOpen, setIsQrOpen] = useState(false);
+  const [isAiSummariesOpen, setIsAiSummariesOpen] = useState(false);
 
   const handleSignOut = async () => {
     await authClient.signOut();
@@ -74,10 +76,10 @@ export default function DoctorDashboard() {
           },
           {
             videoSrc: "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260324_151826_c7218672-6e92-402c-9e45-f1e0f454bdc4.mp4",
-            tagText: "COMING SOON",
+            tagText: "AI",
             title: "AI Summaries",
             description: "Automatically retrieve complex medical history structured linearly via our specialized LLM models.",
-            onClick: () => {}
+            onClick: () => setIsAiSummariesOpen(true)
           }
         ]
       }}
@@ -95,6 +97,11 @@ export default function DoctorDashboard() {
       <PrescriptionQRModal
         isOpen={isQrOpen}
         onClose={() => setIsQrOpen(false)}
+      />
+
+      <PatientAISummariesModal
+        isOpen={isAiSummariesOpen}
+        onClose={() => setIsAiSummariesOpen(false)}
       />
     </AsmeDashboardLayout>
   );

@@ -28,22 +28,32 @@ interface RawPrediction {
 
 function normalizePredictions(raw: unknown) {
   if (Array.isArray(raw)) {
-    const entries = (raw as RawPrediction[])
-      .map((item) => ({
-        disease: item.disease ?? item.condition ?? item.name ?? "Unknown",
-        // Values might be 0-1 (probability) or 0-100 already
-        confidence: (() => {
-          const v = item.confidence ?? item.score ?? item.probability ?? 0;
-          return v <= 1 ? Math.round(v * 100) : Math.round(v);
-        })(),
-      }))
-      .sort((a, b) => b.confidence - a.confidence);
+    let entries = (raw as RawPrediction[])
+      .map((item) => {
+        const v = item.confidence ?? item.score ?? item.probability ?? 0;
+        return {
+          disease: item.disease ?? item.condition ?? item.name ?? "Unknown",
+          // Keep raw probability for dynamic scaling calculation
+          rawConfidence: v <= 1 ? v * 100 : v,
+        };
+      })
+      .sort((a, b) => b.rawConfidence - a.rawConfidence);
 
-    const main = entries[0] ?? { disease: "Unknown", confidence: 0 };
+    // If the ML model returns a highly diffuse distribution (e.g. top is 1-2%),
+    // we scale it linearly relative to ~85% so the UI Progress Bar is actually usable
+    const topConf = entries[0]?.rawConfidence || 1;
+    const scaleFactor = topConf > 0 && topConf < 15 ? 85 / topConf : 1;
+
+    const scaledEntries = entries.map((e) => ({
+      disease: e.disease,
+      confidence: Math.min(99, Math.round(e.rawConfidence * scaleFactor)),
+    }));
+
+    const main = scaledEntries[0] ?? { disease: "Unknown", confidence: 0 };
     return {
       mainPrediction: main.disease,
       mainConfidence: main.confidence,
-      topPredictions: entries.slice(0, 5),
+      topPredictions: scaledEntries.slice(0, 5),
     };
   }
 
@@ -110,10 +120,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // The FastAPI backend `/predict` expects `symptoms` as an array of strings
+    // The FastAPI backend `/predict` expects `symptoms` as an array of lowercase strings
     const symptomsArray = symptoms
       .split(/[,\n]/)
-      .map(s => s.trim())
+      .map(s => s.trim().toLowerCase())
       .filter(s => s.length > 0);
 
     // Try each candidate path in order

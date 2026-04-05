@@ -121,12 +121,13 @@ model Document {
 }
 
 model AISummary {
-  id         String   @id @default(cuid())
-  patientId  String
-  documentId String?
-  document   Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
-  summaryText String
-  createdAt  DateTime  @default(now())
+  id                 String    @id @default(cuid())
+  patientId          String
+  documentId         String?
+  document           Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  summaryText        String
+  sharedWithDoctorId String?   // null = private; set = explicitly shared with this doctor
+  createdAt          DateTime  @default(now())
 
   @@map("ai_summaries")
 }

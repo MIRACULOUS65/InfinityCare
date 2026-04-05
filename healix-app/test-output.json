@@ -1,0 +1,21 @@
+{
+  "matched_symptoms": [
+    "cough",
+    "fever"
+  ],
+  "main_prediction": "esophagitis",
+  "top_predictions": [
+    {
+      "disease": "esophagitis",
+      "confidence": 0.0063712826893166374
+    },
+    {
+      "disease": "cystitis",
+      "confidence": 0.006007709120644257
+    },
+    {
+      "disease": "strep throat",
+      "confidence": 0.0059409060882955785
+    }
+  ]
+}
