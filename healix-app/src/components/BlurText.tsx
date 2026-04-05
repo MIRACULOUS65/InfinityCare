@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useInView } from "framer-motion";
+import { motion, useInView, Variants } from "framer-motion";
 import { useRef } from "react";
 
 interface BlurTextProps {
@@ -15,7 +15,7 @@ export function BlurText({ text, className = "", delay = 0 }: BlurTextProps) {
 
   const words = text.split(" ");
 
-  const container = {
+  const container: Variants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
@@ -26,7 +26,7 @@ export function BlurText({ text, className = "", delay = 0 }: BlurTextProps) {
     },
   };
 
-  const child = {
+  const child: Variants = {
     hidden: {
       opacity: 0,
       filter: "blur(10px)",

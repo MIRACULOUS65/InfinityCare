@@ -56,7 +56,8 @@ export function FaceMatchModal({ isOpen, onClose }: FaceMatchModalProps) {
       formData.append("file", file);
 
       // 1. Send to Local Python DeepFace Engine
-      const matchRes = await fetch("http://localhost:5000/match", {
+      const faceMatchBase = process.env.NEXT_PUBLIC_FACE_MATCH_URL ?? "http://localhost:5000";
+      const matchRes = await fetch(`${faceMatchBase}/match`, {
         method: "POST",
         body: formData,
       });

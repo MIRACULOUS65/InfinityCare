@@ -7,17 +7,24 @@ from flask_cors import CORS
 from deepface import DeepFace
 
 app = Flask(__name__)
-CORS(app)
+
+# Allow CORS from the frontend origin (Vercel in production, localhost in dev)
+allowed_origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
+CORS(app, origins=allowed_origins)
 
 CACHE_DIR = "db_cache"
 env_path = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
 
 def get_database_url():
+    # Prefer DATABASE_URL from environment (Render sets this)
+    env_url = os.environ.get("DATABASE_URL")
+    if env_url:
+        return env_url.split("?")[0]
+    # Fallback: read from local .env file (dev)
     if os.path.exists(env_path):
         with open(env_path, "r") as f:
             for line in f:
                 if line.startswith("DATABASE_URL="):
-                    # Remove quotes, whitespace, and query params like ?pgbouncer=true
                     url = line.split("=", 1)[1].strip().strip('"').strip("'")
                     return url.split("?")[0]
     return None
@@ -110,9 +117,10 @@ def match_face():
         if os.path.exists(temp_path):
             os.remove(temp_path)
 
+# Pre-sync runs on import (works for both gunicorn and direct run)
+print("Pre-syncing database faces...")
+sync_patient_faces()
+
 if __name__ == '__main__':
-    print("Pre-syncing database faces...")
-    sync_patient_faces()
-    # Force initial DeepFace model load to make first query fast
-    # By running find on empty/dummy or it natively loads during first hit. We'll let it load on first hit.
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)

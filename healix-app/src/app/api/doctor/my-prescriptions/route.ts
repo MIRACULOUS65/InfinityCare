@@ -24,16 +24,16 @@ export async function GET() {
     });
 
     // Fetch patient names for each prescription
-    const patientIds = [...new Set(prescriptions.map((p) => p.patientId))];
+    const patientIds = [...new Set(prescriptions.map((p: any) => p.patientId))];
     const patients = await db.user.findMany({
       where: { id: { in: patientIds } },
       select: { id: true, name: true, email: true },
     });
-    const patientMap = Object.fromEntries(patients.map((p) => [p.id, p]));
+    const patientMap = Object.fromEntries(patients.map((p: any) => [p.id, p]));
 
     return NextResponse.json({
       success: true,
-      prescriptions: prescriptions.map((p) => ({
+      prescriptions: prescriptions.map((p: any) => ({
         id: p.id,
         patientId: p.patientId,
         patientName: patientMap[p.patientId]?.name || "Unknown",
