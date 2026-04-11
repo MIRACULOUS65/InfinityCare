@@ -1,3 +1,11 @@
+## 🎥 Sentinel Demo
+
+[![InfinityCare Demo Video](./frontend/public/sentinel.png)](https://youtu.be/OUSeO34ztnE)
+
+▶️ **[Watch Demo Video on Youtube](https://youtu.be/OUSeO34ztnE)**
+
+
+
 <p align="center">
   <img src="https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js" />
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=white" />
