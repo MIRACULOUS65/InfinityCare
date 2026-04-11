@@ -1,6 +1,6 @@
 ## 🎥 InfinityCare Demo
 
-[![InfinityCare Demo Video](./frontend/public/infinitycare.png)](https://youtu.be/PkyaTOJA9oU)
+[![InfinityCare Demo Video](./healix-app/public/infinitycare.png)](https://youtu.be/PkyaTOJA9oU)
 
 ▶️ **[Watch Demo Video on Youtube](https://youtu.be/PkyaTOJA9oU)**
 
