@@ -1,8 +1,8 @@
-## 🎥 Sentinel Demo
+## 🎥 InfinityCare Demo
 
-[![InfinityCare Demo Video](./frontend/public/sentinel.png)](https://youtu.be/OUSeO34ztnE)
+[![InfinityCare Demo Video](./frontend/public/infinitycare.png)](https://youtu.be/PkyaTOJA9oU)
 
-▶️ **[Watch Demo Video on Youtube](https://youtu.be/OUSeO34ztnE)**
+▶️ **[Watch Demo Video on Youtube](https://youtu.be/PkyaTOJA9oU)**
 
 
 
